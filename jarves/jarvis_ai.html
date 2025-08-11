@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>JARVIS AI Assistant</title>
+  <style>
+    body {
+      background-color: black;
+      color: #00ffee;
+      font-family: 'Orbitron', sans-serif;
+      text-align: center;
+      padding: 50px;
+    }
+
+    .circle {
+      width: 150px;
+      height: 150px;
+      margin: 0 auto;
+      border-radius: 50%;
+      background: radial-gradient(circle, #00ffee, #003333);
+      box-shadow: 0 0 30px #00ffee;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+
+    input {
+      width: 400px;
+      padding: 10px;
+      margin: 20px;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      background-color: #00ffee;
+      border: none;
+      color: black;
+      cursor: pointer;
+    }
+
+    #output {
+      margin-top: 30px;
+      font-size: 20px;
+      min-height: 100px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="circle"></div>
+  <h1>JARVIS ONLINE</h1>
+
+  <input id="apiKey" type="password" placeholder="Enter OpenAI API Key" />
+  <br>
+  <button onclick="startJarvis()">🎤 Start Talking</button>
+
+  <div id="output">Waiting for your command...</div>
+
+  <script>
+    let outputDiv = document.getElementById("output");
+
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "hi-IN"; // Change to "en-US" if only English needed
+      utterance.rate = 1;
+      speechSynthesis.speak(utterance);
+    }
+
+    async function askGPT(message, apiKey) {
+      const url = "https://api.openai.com/v1/chat/completions";
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      };
+
+      const body = JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: message }]
+      });
+
+      try {
+        const res = await fetch(url, { method: "POST", headers, body });
+        const data = await res.json();
+        return data.choices[0].message.content;
+      } catch (e) {
+        return "Sorry, there was an error connecting to OpenAI.";
+      }
+    }
+
+    function startJarvis() {
+      const apiKey = document.getElementById("apiKey").value.trim();
+      if (!apiKey) {
+        alert("Please enter your OpenAI API key.");
+        return;
+      }
+
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = "hi-IN"; // Hindi + English support
+      recognition.start();
+
+      outputDiv.innerText = "🎧 Listening...";
+
+      recognition.onresult = async (event) => {
+        const transcript = event.results[0][0].transcript.toLowerCase();
+        outputDiv.innerText = "🗣️ You said: " + transcript;
+
+        // YouTube Command
+        if (transcript.includes("youtube") || transcript.includes("play")) {
+          const query = transcript.replace("play", "").replace("on youtube", "").trim();
+          const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+          speak("Opening YouTube for " + query);
+          window.open(url, "_blank");
+          return;
+        }
+
+        // Normal ChatGPT Query
+        const reply = await askGPT(transcript, apiKey);
+        outputDiv.innerText = "🤖 Jarvis: " + reply;
+        speak(reply);
+      };
+
+      recognition.onerror = (event) => {
+        outputDiv.innerText = "❌ Error: " + event.error;
+        speak("Sorry, I didn't catch that.");
+      };
+    }
+  </script>
+
+</body>
+</html>
